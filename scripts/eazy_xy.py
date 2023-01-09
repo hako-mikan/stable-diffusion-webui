@@ -44,11 +44,23 @@ def with_prompt(p, x, xs):
 
 def without_prompt(p, x, xs):
     if x not in p.prompt and x not in p.negative_prompt:
-        raise RuntimeError(f"Prompt without did not find {x} in prompt or negative prompt.")
+        raise RuntimeError(f"Prompt S/R did not find {x} in prompt or negative prompt.")
 
     p.prompt = p.prompt.replace(x,"")
     p.negative_prompt = p.negative_prompt.replace(x,"")
 
+def add_prompt(p, x, xs):
+    for i in xs:
+        p.prompt = p.prompt + ","+i
+        if i == x:
+            break
+
+def subtract_prompt(p, x, xs):
+    for i in xs:
+        p.prompt = p.prompt.replace(i,"")
+        p.negative_prompt = p.negative_prompt.replace(i,"")
+        if i == x:
+            break
 
 def apply_order(p, x, xs):
     token_order = []
@@ -219,6 +231,8 @@ axis_options = [
     AxisOption("Styles", str, apply_styles, format_value_add_label, None),
     AxisOption("Prompt with", str, with_prompt, format_value, None),
     AxisOption("Prompt without", str, without_prompt, format_value, None),
+    AxisOption("Prompt Add", str, add_prompt, format_value, None),
+    AxisOption("Prompt Subtract", str, subtract_prompt, format_value, None),
 ]
 
 
@@ -311,7 +325,7 @@ class Script(scripts.Script):
         
         x_type = gr.Dropdown(label="X type", choices=[x.label for x in current_axis_options], value=current_axis_options[1].label, type="index")
         with gr.Row():
-            x_randseednum = gr.Number(value=512, label="number of -1", interactive=True, visible = True)
+            x_randseednum = gr.Number(value=3, label="number of -1", interactive=True, visible = True)
             x_values = gr.Textbox(label="X values", lines=1, elem_id=self.elem_id("x_values"))
         x_checkpoints = gr.CheckboxGroup(label = "checkpoint",choices=[x.model_name for x in modules.sd_models.checkpoints_list.values()],type="value",interactive=True,visible = False)
         x_samplers = gr.CheckboxGroup(label = "sampler",choices=[x.name for x in modules.sd_samplers.all_samplers],type="value",interactive=True,visible = False)
@@ -320,7 +334,7 @@ class Script(scripts.Script):
 
         y_type = gr.Dropdown(label="Y type", choices=[x.label for x in current_axis_options], value=current_axis_options[0].label, type="index")
         with gr.Row():
-            y_randseednum = gr.Number(label="number of -1", value=4,interactive=True,visible =True)
+            y_randseednum = gr.Number(value=3, label="number of -1",interactive=True,visible =True)
             y_values = gr.Textbox(label="Y values", lines=1)
         y_checkpoints = gr.CheckboxGroup(label = "checkpoint",choices=[x.model_name for x in modules.sd_models.checkpoints_list.values()],type="value",interactive=True,visible = False)
         y_samplers = gr.CheckboxGroup(label = "sampler",choices=[x.name for x in modules.sd_samplers.all_samplers],type="value",interactive=True,visible = False)
