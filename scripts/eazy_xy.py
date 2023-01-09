@@ -38,6 +38,17 @@ def apply_prompt(p, x, xs):
     p.prompt = p.prompt.replace(xs[0], x)
     p.negative_prompt = p.negative_prompt.replace(xs[0], x)
 
+def with_prompt(p, x, xs):
+    p.prompt = p.prompt+","+x
+    #p.negative_prompt = p.negative_prompt+","+x
+
+def without_prompt(p, x, xs):
+    if x not in p.prompt and x not in p.negative_prompt:
+        raise RuntimeError(f"Prompt without did not find {x} in prompt or negative prompt.")
+
+    p.prompt = p.prompt.replace(x,"")
+    p.negative_prompt = p.negative_prompt.replace(x,"")
+
 
 def apply_order(p, x, xs):
     token_order = []
@@ -206,6 +217,8 @@ axis_options = [
     AxisOption("Cond. Image Mask Weight", float, apply_field("inpainting_mask_weight"), format_value_add_label, None),
     AxisOption("VAE", str, apply_vae, format_value_add_label, None),
     AxisOption("Styles", str, apply_styles, format_value_add_label, None),
+    AxisOption("Prompt with", str, with_prompt, format_value, None),
+    AxisOption("Prompt without", str, without_prompt, format_value, None),
 ]
 
 
@@ -299,7 +312,7 @@ class Script(scripts.Script):
         x_type = gr.Dropdown(label="X type", choices=[x.label for x in current_axis_options], value=current_axis_options[1].label, type="index")
         with gr.Row():
             x_randseednum = gr.Number(value=512, label="number of -1", interactive=True, visible = True)
-            x_values = gr.Textbox(label="X values", lines=1)
+            x_values = gr.Textbox(label="X values", lines=1, elem_id=self.elem_id("x_values"))
         x_checkpoints = gr.CheckboxGroup(label = "checkpoint",choices=[x.model_name for x in modules.sd_models.checkpoints_list.values()],type="value",interactive=True,visible = False)
         x_samplers = gr.CheckboxGroup(label = "sampler",choices=[x.name for x in modules.sd_samplers.all_samplers],type="value",interactive=True,visible = False)
         x_vaes = gr.CheckboxGroup(label = "VAE",choices=[x for x in modules.sd_vae.vae_list],type="value",interactive=True,visible = False)
