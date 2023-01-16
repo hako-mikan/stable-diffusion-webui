@@ -149,26 +149,23 @@ def apply_upscale_latent_space(p, x, xs):
 
 
 def find_vae(name: str):
-    if name.lower() in ['auto', 'none']:
-        return name
+    if name.lower() in ['auto', 'automatic']:
+        return modules.sd_vae.unspecified
+    if name.lower() == 'none':
+        return None
     else:
-        vae_path = os.path.abspath(os.path.join(paths.models_path, 'VAE'))
-        found = glob.glob(os.path.join(vae_path, f'**/{name}.*pt'), recursive=True)
-        if found:
-            return found[0]
+        choices = [x for x in sorted(modules.sd_vae.vae_dict, key=lambda x: len(x)) if name.lower().strip() in x.lower()]
+        if len(choices) == 0:
+            print(f"No VAE found for {name}; using automatic")
+            return modules.sd_vae.unspecified
         else:
-            return 'auto'
+            return modules.sd_vae.vae_dict[choices[0]]
 
-
+        
 def apply_vae(p, x, xs):
-    if x.lower().strip() == 'none':
-        modules.sd_vae.reload_vae_weights(shared.sd_model, vae_file='None')
-    else:
-        found = find_vae(x)
-        if found:
-            v = modules.sd_vae.reload_vae_weights(shared.sd_model, vae_file=found)
+    modules.sd_vae.reload_vae_weights(shared.sd_model, vae_file=find_vae(x))
 
-
+    
 def apply_styles(p: StableDiffusionProcessingTxt2Img, x: str, _):
     p.styles = x.split(',')
 
@@ -296,18 +293,18 @@ class SharedSettingsStackHelper(object):
     def __enter__(self):
         self.CLIP_stop_at_last_layers = opts.CLIP_stop_at_last_layers
         self.hypernetwork = opts.sd_hypernetwork
-        self.model = shared.sd_model
         self.vae = opts.sd_vae
   
     def __exit__(self, exc_type, exc_value, tb):
-        modules.sd_models.reload_model_weights(self.model)
-        modules.sd_vae.reload_vae_weights(self.model, vae_file=find_vae(self.vae))
+        opts.data["sd_vae"] = self.vae
+        modules.sd_models.reload_model_weights()
+        modules.sd_vae.reload_vae_weights()
 
         hypernetwork.load_hypernetwork(self.hypernetwork)
         hypernetwork.apply_strength()
 
         opts.data["CLIP_stop_at_last_layers"] = self.CLIP_stop_at_last_layers
-
+        
 
 re_range = re.compile(r"\s*([+-]?\s*\d+)\s*-\s*([+-]?\s*\d+)(?:\s*\(([+-]\d+)\s*\))?\s*")
 re_range_float = re.compile(r"\s*([+-]?\s*\d+(?:.\d*)?)\s*-\s*([+-]?\s*\d+(?:.\d*)?)(?:\s*\(([+-]\d+(?:.\d*)?)\s*\))?\s*")
@@ -329,7 +326,7 @@ class Script(scripts.Script):
             x_values = gr.Textbox(label="X values", lines=1, elem_id=self.elem_id("x_values"))
         x_checkpoints = gr.CheckboxGroup(label = "checkpoint",choices=[x.model_name for x in modules.sd_models.checkpoints_list.values()],type="value",interactive=True,visible = False)
         x_samplers = gr.CheckboxGroup(label = "sampler",choices=[x.name for x in modules.sd_samplers.all_samplers],type="value",interactive=True,visible = False)
-        x_vaes = gr.CheckboxGroup(label = "VAE",choices=[x for x in modules.sd_vae.vae_list],type="value",interactive=True,visible = False)
+        x_vaes = gr.CheckboxGroup(label = "VAE",choices=[x for x in modules.sd_vae.vae_dict],type="value",interactive=True,visible = False)
         x_hnets = gr.CheckboxGroup(label = "Hypernetworks",choices=[x for x in hypernames],type="value",interactive=True,visible = False)
 
         y_type = gr.Dropdown(label="Y type", choices=[x.label for x in current_axis_options], value=current_axis_options[0].label, type="index")
@@ -338,7 +335,7 @@ class Script(scripts.Script):
             y_values = gr.Textbox(label="Y values", lines=1)
         y_checkpoints = gr.CheckboxGroup(label = "checkpoint",choices=[x.model_name for x in modules.sd_models.checkpoints_list.values()],type="value",interactive=True,visible = False)
         y_samplers = gr.CheckboxGroup(label = "sampler",choices=[x.name for x in modules.sd_samplers.all_samplers],type="value",interactive=True,visible = False)
-        y_vaes = gr.CheckboxGroup(label = "VAE",choices=[x for x in modules.sd_vae.vae_list],type="value",interactive=True,visible = False)
+        y_vaes = gr.CheckboxGroup(label = "VAE",choices=[x for x in modules.sd_vae.vae_dict],type="value",interactive=True,visible = False)
         y_hnets = gr.CheckboxGroup(label = "Hypernetworks",choices=[x for x in hypernames],type="value",interactive=True,visible = False)
 
         draw_legend = gr.Checkbox(label='Draw legend', value=True)
